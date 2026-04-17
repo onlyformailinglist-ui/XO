@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0a0a0a">
+<title>XO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;600&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+:root {
+  --bg:       #0a0a0a;
+  --surface:  #121212;
+  --grid:     rgba(255,255,255,0.07);
+  --x:        #e8c97a;
+  --o:        #7ec8e3;
+  --text:     #f0ede6;
+  --muted:    rgba(240,237,230,0.35);
+  --win-bg:   rgba(255,255,255,0.05);
+  --radius:   18px;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+  min-height: 100vh;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ─── TOP BAR ─── */
+.topbar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px 10px;
+}
+.brand {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 300;
+  font-size: 22px;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.btn-reset {
+  background: none;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: var(--muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 7px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.btn-reset:active { opacity: .5; transform: scale(.95); }
+.btn-reset:hover { border-color: rgba(255,255,255,0.25); color: var(--text); }
+
+/* ─── SCORE PANEL ─── */
+.score-panel {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 6px 20px;
+}
+.player-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 8px;
+  border-radius: 14px;
+  transition: all .35s cubic-bezier(.4,0,.2,1);
+  position: relative;
+  cursor: pointer;
+}
+.player-card.active-turn {
+  background: rgba(255,255,255,0.04);
+}
+.player-card.active-turn::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 20px; height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  animation: pulse-dot .9s ease-in-out infinite alternate;
+}
+.player-x .player-card.active-turn::after { background: var(--x); color: var(--x); }
+.player-o .player-card.active-turn::after { background: var(--o); color: var(--o); }
+@keyframes pulse-dot { from { opacity:.4; width:14px; } to { opacity:1; width:24px; } }
+
+.player-name-wrap { display: flex; align-items: center; gap: 6px; }
+.player-name {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  max-width: 90px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  outline: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+  cursor: text;
+  font-family: 'Outfit', sans-serif;
+}
+.player-name:focus { border-bottom: 1px solid rgba(255,255,255,.25); }
+.player-symbol {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.player-x .player-symbol { color: var(--x); }
+.player-o .player-symbol { color: var(--o); }
+.player-score {
+  font-size: 34px;
+  font-weight: 300;
+  line-height: 1;
+  margin-top: 4px;
+}
+.player-x .player-score { color: var(--x); }
+.player-o .player-score { color: var(--o); }
+
+.score-divider {
+  width: 1px;
+  height: 54px;
+  background: rgba(255,255,255,.08);
+  margin: 0 10px;
+  flex-shrink: 0;
+}
+.draw-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 0 14px;
+}
+.draw-count span:first-child { font-size: 10px; color: var(--muted); letter-spacing: 1.2px; text-transform: uppercase; }
+.draw-count span:last-child { font-size: 22px; font-weight: 300; color: var(--muted); }
+
+/* ─── STATUS LINE ─── */
+.status-line {
+  font-size: 13px;
+  color: var(--muted);
+  letter-spacing: 0.3px;
+  height: 20px;
+  text-align: center;
+  padding: 0 20px;
+  transition: opacity .25s;
+}
+.status-line.flash { animation: status-flash .5s ease; }
+@keyframes status-flash { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* ─── GRID ─── */
+.grid-wrap {
+  width: 100%;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+.grid {
+  display: grid;
+  gap: 0;
+  position: relative;
+}
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: background .15s;
+  border: none;
+  background: transparent;
+}
+.cell::before {
+  content: '';
+  display: block;
+  padding-top: 100%;
+}
+.cell:active:not(.taken) { background: rgba(255,255,255,0.04); }
+.cell.win-cell {
+  animation: win-glow .4s ease forwards;
+}
+@keyframes win-glow {
+  from { background: transparent; }
+  to   { background: var(--win-bg); }
+}
+
+/* Grid lines via pseudo */
+.cell-inner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* SVG mark */
+.mark-svg {
+  width: 52%;
+  height: 52%;
+  overflow: visible;
+}
+
+/* X paths */
+.x-line1, .x-line2 {
+  stroke: var(--x);
+  stroke-linecap: round;
+  stroke-width: 3;
+  fill: none;
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  animation: draw-line .25s cubic-bezier(.4,0,.2,1) forwards;
+}
+.x-line2 { animation-delay: .08s; }
+
+/* O circle */
+.o-circle {
+  stroke: var(--o);
+  stroke-linecap: round;
+  stroke-width: 3;
+  fill: none;
+  stroke-dasharray: 113;
+  stroke-dashoffset: 113;
+  animation: draw-circle .3s cubic-bezier(.4,0,.2,1) forwards;
+}
+
+@keyframes draw-line   { to { stroke-dashoffset: 0; } }
+@keyframes draw-circle { to { stroke-dashoffset: 0; } }
+
+/* Win line overlay */
+.win-line-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+}
+.win-line-path {
+  stroke: rgba(255,255,255,0.22);
+  stroke-linecap: round;
+  stroke-width: 4;
+  fill: none;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw-win .4s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes draw-win { to { stroke-dashoffset: 0; } }
+
+/* Grid line borders */
+.grid-lines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ─── SIZE SELECTOR ─── */
+.size-selector {
+  display: flex;
+  gap: 8px;
+  padding: 14px 20px 10px;
+  justify-content: center;
+}
+.size-btn {
+  flex: 1;
+  max-width: 90px;
+  padding: 10px 0;
+  border-radius: 11px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  transition: all .2s;
+}
+.size-btn.active {
+  background: rgba(255,255,255,0.07);
+  border-color: rgba(255,255,255,0.22);
+  color: var(--text);
+}
+.size-btn:active { transform: scale(.95); opacity:.7; }
+
+/* ─── BOTTOM ─── */
+.bottom-pad { height: 20px; }
+
+/* ─── WIN OVERLAY ─── */
+.win-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10,10,10,.88);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.win-overlay.show { opacity: 1; pointer-events: all; }
+
+.win-label {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 10px;
+  animation: fade-up .4s .1s both;
+}
+.win-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 52px;
+  font-weight: 600;
+  line-height: 1;
+  margin-bottom: 8px;
+  animation: fade-up .4s .2s both;
+}
+.win-name.x-win { color: var(--x); }
+.win-name.o-win { color: var(--o); }
+.win-name.draw-name { color: var(--muted); font-size: 38px; }
+.win-sub {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 44px;
+  animation: fade-up .4s .25s both;
+}
+
+@keyframes fade-up {
+  from { opacity:0; transform: translateY(14px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+.win-btn {
+  padding: 17px 52px;
+  border-radius: 14px;
+  border: none;
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  animation: fade-up .4s .35s both;
+  transition: transform .15s, opacity .15s;
+}
+.win-btn:active { transform: scale(.95); opacity:.8; }
+.win-btn.x-btn { background: var(--x); color: #0a0a0a; }
+.win-btn.o-btn { background: var(--o); color: #0a0a0a; }
+.win-btn.d-btn { background: rgba(255,255,255,.12); color: var(--text); }
+
+/* Grid border drawing */
+.grid-border-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.grid-line-el {
+  stroke: rgba(255,255,255,0.1);
+  stroke-width: 1;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">X&nbsp;O</div>
+  <button class="btn-reset" onclick="resetScores()">Reset Scores</button>
+</div>
+
+<div class="score-panel">
+  <div class="player-x" id="cardX">
+    <div class="player-card" id="pCardX">
+      <div class="player-symbol">✕ &nbsp;X</div>
+      <div class="player-name-wrap">
+        <input class="player-name" id="nameX" value="Player 1" maxlength="14" inputmode="text" onblur="this.blur()">
+      </div>
+      <div class="player-score" id="scoreX">0</div>
+    </div>
+  </div>
+
+  <div class="score-divider"></div>
+  <div class="draw-count">
+    <span>Draws</span>
+    <span id="scoreDraw">0</span>
+  </div>
+  <div class="score-divider"></div>
+
+  <div class="player-o" id="cardO">
+    <div class="player-card" id="pCardO">
+      <div class="player-symbol">○ &nbsp;O</div>
+      <div class="player-name-wrap">
+        <input class="player-name" id="nameO" value="Player 2" maxlength="14" inputmode="text" onblur="this.blur()">
+      </div>
+      <div class="player-score" id="scoreO">0</div>
+    </div>
+  </div>
+</div>
+
+<div class="status-line" id="statusLine">Player 1's turn</div>
+
+<div class="grid-wrap">
+  <div id="gridContainer" class="grid" style="position:relative;"></div>
+</div>
+
+<div class="size-selector">
+  <button class="size-btn active" data-size="3" onclick="selectSize(3,this)">3 × 3</button>
+  <button class="size-btn" data-size="4" onclick="selectSize(4,this)">4 × 4</button>
+  <button class="size-btn" data-size="5" onclick="selectSize(5,this)">5 × 5</button>
+</div>
+
+<div class="bottom-pad"></div>
+
+<!-- Win overlay -->
+<div class="win-overlay" id="winOverlay">
+  <div class="win-label" id="winLabel"></div>
+  <div class="win-name" id="winName"></div>
+  <div class="win-sub" id="winSub"></div>
+  <button class="win-btn" id="winBtn" onclick="nextRound()"></button>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════
+let gridSize   = 3;
+let winLength  = 3;
+let board      = [];
+let turn       = 'X'; // 'X' or 'O'
+let gameOver   = false;
+let scores     = { X: 0, O: 0, D: 0 };
+let cellSize   = 0;
+
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+function init() {
+  winLength = gridSize;
+  board = Array(gridSize * gridSize).fill(null);
+  turn = 'X';
+  gameOver = false;
+  buildGrid();
+  updateTurnUI();
+}
+
+function selectSize(n, btn) {
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  gridSize = n;
+  init();
+}
+
+function resetScores() {
+  scores = { X: 0, O: 0, D: 0 };
+  updateScoreUI();
+  init();
+}
+
+function nextRound() {
+  document.getElementById('winOverlay').classList.remove('show');
+  setTimeout(init, 180);
+}
+
+// ═══════════════════════════════════════
+//  BUILD GRID
+// ═══════════════════════════════════════
+function buildGrid() {
+  const container = document.getElementById('gridContainer');
+  container.innerHTML = '';
+
+  // Compute cell size
+  const vw = Math.min(window.innerWidth, 480) - 40;
+  const availH = window.innerHeight - 320;
+  const maxSize = Math.min(vw, availH);
+  cellSize = Math.floor(maxSize / gridSize);
+  const totalSize = cellSize * gridSize;
+
+  container.style.gridTemplateColumns = `repeat(${gridSize}, ${cellSize}px)`;
+  container.style.gridTemplateRows    = `repeat(${gridSize}, ${cellSize}px)`;
+  container.style.width  = totalSize + 'px';
+  container.style.height = totalSize + 'px';
+
+  // Build cells
+  for (let i = 0; i < gridSize * gridSize; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.dataset.idx = i;
+    cell.style.width  = cellSize + 'px';
+    cell.style.height = cellSize + 'px';
+
+    const inner = document.createElement('div');
+    inner.className = 'cell-inner';
+    inner.id = 'ci_' + i;
+    cell.appendChild(inner);
+    cell.addEventListener('click', () => onCellClick(i));
+    container.appendChild(cell);
+  }
+
+  // Draw grid lines as SVG overlay
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('grid-border-svg');
+  svg.setAttribute('viewBox', `0 0 ${totalSize} ${totalSize}`);
+
+  for (let i = 1; i < gridSize; i++) {
+    // vertical
+    const vl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    vl.setAttribute('x1', i * cellSize); vl.setAttribute('y1', 12);
+    vl.setAttribute('x2', i * cellSize); vl.setAttribute('y2', totalSize - 12);
+    vl.classList.add('grid-line-el');
+    svg.appendChild(vl);
+    // horizontal
+    const hl = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    hl.setAttribute('x1', 12);              hl.setAttribute('y1', i * cellSize);
+    hl.setAttribute('x2', totalSize - 12);  hl.setAttribute('y2', i * cellSize);
+    hl.classList.add('grid-line-el');
+    svg.appendChild(hl);
+  }
+  container.appendChild(svg);
+}
+
+// ═══════════════════════════════════════
+//  GAMEPLAY
+// ═══════════════════════════════════════
+function onCellClick(idx) {
+  if (gameOver || board[idx]) return;
+
+  board[idx] = turn;
+  renderMark(idx, turn);
+
+  const result = checkWin();
+  if (result) {
+    handleWin(result);
+    return;
+  }
+  if (board.every(c => c !== null)) {
+    handleDraw();
+    return;
+  }
+  turn = turn === 'X' ? 'O' : 'X';
+  updateTurnUI();
+}
+
+function renderMark(idx, player) {
+  const inner = document.getElementById('ci_' + idx);
+  const p = cellSize * 0.52;
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('mark-svg');
+  svg.setAttribute('viewBox', '0 0 100 100');
+
+  if (player === 'X') {
+    const l1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l1.setAttribute('x1','22'); l1.setAttribute('y1','22');
+    l1.setAttribute('x2','78'); l1.setAttribute('y2','78');
+    l1.classList.add('x-line1');
+    const l2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l2.setAttribute('x1','78'); l2.setAttribute('y1','22');
+    l2.setAttribute('x2','22'); l2.setAttribute('y2','78');
+    l2.classList.add('x-line2');
+    svg.appendChild(l1); svg.appendChild(l2);
+  } else {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx','50'); c.setAttribute('cy','50'); c.setAttribute('r','27');
+    c.classList.add('o-circle');
+    svg.appendChild(c);
+  }
+  inner.appendChild(svg);
+
+  const cell = inner.parentElement;
+  cell.classList.add('taken');
+}
+
+// ═══════════════════════════════════════
+//  WIN DETECTION
+// ═══════════════════════════════════════
+function checkWin() {
+  const n = gridSize, L = winLength;
+
+  // Rows
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c <= n - L; c++) {
+      const line = [];
+      for (let k = 0; k < L; k++) line.push(r * n + c + k);
+      if (allSame(line)) return line;
+    }
+  }
+  // Cols
+  for (let c = 0; c < n; c++) {
+    for (let r = 0; r <= n - L; r++) {
+      const line = [];
+      for (let k = 0; k < L; k++) line.push((r + k) * n + c);
+      if (allSame(line)) return line;
+    }
+  }
+  // Diag ↘
+  for (let r = 0; r <= n - L; r++) {
+    for (let c = 0; c <= n - L; c++) {
+      const line = [];
+      for (let k = 0; k < L; k++) line.push((r + k) * n + c + k);
+      if (allSame(line)) return line;
+    }
+  }
+  // Diag ↙
+  for (let r = 0; r <= n - L; r++) {
+    for (let c = L - 1; c < n; c++) {
+      const line = [];
+      for (let k = 0; k < L; k++) line.push((r + k) * n + c - k);
+      if (allSame(line)) return line;
+    }
+  }
+  return null;
+}
+
+function allSame(indices) {
+  const vals = indices.map(i => board[i]);
+  return vals[0] !== null && vals.every(v => v === vals[0]);
+}
+
+// ═══════════════════════════════════════
+//  HANDLE RESULTS
+// ═══════════════════════════════════════
+function handleWin(winLine) {
+  gameOver = true;
+  scores[turn]++;
+  updateScoreUI();
+
+  // Highlight cells
+  winLine.forEach(idx => {
+    document.querySelector(`[data-idx="${idx}"]`).classList.add('win-cell');
+  });
+
+  // Draw win line
+  drawWinLine(winLine);
+
+  const name = turn === 'X'
+    ? document.getElementById('nameX').value
+    : document.getElementById('nameO').value;
+
+  setStatus(`${name} wins! 🏆`);
+
+  setTimeout(() => {
+    const overlay = document.getElementById('winOverlay');
+    document.getElementById('winLabel').textContent = 'winner';
+    const wn = document.getElementById('winName');
+    wn.textContent = name;
+    wn.className = 'win-name ' + (turn === 'X' ? 'x-win' : 'o-win');
+    document.getElementById('winSub').textContent = turn === 'X' ? '× got the line' : '○ got the line';
+    const wb = document.getElementById('winBtn');
+    wb.textContent = 'Play Again';
+    wb.className = 'win-btn ' + (turn === 'X' ? 'x-btn' : 'o-btn');
+    overlay.classList.add('show');
+  }, 700);
+}
+
+function handleDraw() {
+  gameOver = true;
+  scores.D++;
+  updateScoreUI();
+  setStatus("It's a draw!");
+
+  setTimeout(() => {
+    const overlay = document.getElementById('winOverlay');
+    document.getElementById('winLabel').textContent = 'result';
+    const wn = document.getElementById('winName');
+    wn.textContent = 'Draw';
+    wn.className = 'win-name draw-name';
+    document.getElementById('winSub').textContent = 'No one got the line';
+    const wb = document.getElementById('winBtn');
+    wb.textContent = 'Play Again';
+    wb.className = 'win-btn d-btn';
+    overlay.classList.add('show');
+  }, 500);
+}
+
+function drawWinLine(winLine) {
+  const container = document.getElementById('gridContainer');
+  const n = gridSize;
+  const total = cellSize * n;
+
+  const first = winLine[0];
+  const last  = winLine[winLine.length - 1];
+  const fr = Math.floor(first / n), fc = first % n;
+  const lr = Math.floor(last  / n), lc = last  % n;
+
+  const cx = idx => (idx % n) * cellSize + cellSize / 2;
+  const cy = idx => Math.floor(idx / n) * cellSize + cellSize / 2;
+
+  const pad = cellSize * 0.22;
+  const x1 = cx(first) - (cx(last) - cx(first)) / winLine.length * pad / cellSize * 0;
+  const y1 = cy(first);
+  const x2 = cx(last);
+  const y2 = cy(last);
+
+  // offset slightly toward edges
+  const dx = x2 === x1 ? 0 : (x2 > x1 ? -pad : pad);
+  const dy = y2 === y1 ? 0 : (y2 > y1 ? -pad : pad);
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('win-line-svg');
+  svg.setAttribute('viewBox', `0 0 ${total} ${total}`);
+
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  path.setAttribute('x1', cx(first) + dx);
+  path.setAttribute('y1', cy(first) + dy);
+  path.setAttribute('x2', cx(last)  - dx);
+  path.setAttribute('y2', cy(last)  - dy);
+  path.classList.add('win-line-path');
+  svg.appendChild(path);
+  container.appendChild(svg);
+}
+
+// ═══════════════════════════════════════
+//  UI UPDATES
+// ═══════════════════════════════════════
+function updateTurnUI() {
+  const nameX = document.getElementById('nameX').value;
+  const nameO = document.getElementById('nameO').value;
+  const name  = turn === 'X' ? nameX : nameO;
+  setStatus(`${name}'s turn`);
+
+  document.getElementById('pCardX').classList.toggle('active-turn', turn === 'X');
+  document.getElementById('pCardO').classList.toggle('active-turn', turn === 'O');
+}
+
+function updateScoreUI() {
+  document.getElementById('scoreX').textContent = scores.X;
+  document.getElementById('scoreO').textContent = scores.O;
+  document.getElementById('scoreDraw').textContent = scores.D;
+}
+
+function setStatus(msg) {
+  const el = document.getElementById('statusLine');
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.textContent = msg;
+  el.classList.add('flash');
+}
+
+// Resize handler
+window.addEventListener('resize', () => { if (!gameOver) buildGrid(); });
+
+// Start
+init();
+</script>
+</body>
+</html>
